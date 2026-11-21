@@ -56,7 +56,7 @@ button:focus-visible{outline:2px solid var(--active);outline-offset:2px}
 </head>
 <body>
 <div class="top"><h1>The Process</h1>
-<div class="acts"><button class="btn go" data-a="sendmc">Send to Mission Control</button><button class="btn" data-a="export">Export</button><button class="btn" data-a="import">Import</button><input type="file" id="file" accept=".json" hidden></div></div>
+<div class="acts"><span id="msg" role="status" style="font-size:12px;color:var(--active);align-self:center"></span><button class="btn go" data-a="sendmc">Send to Mission Control</button><button class="btn" data-a="export">Export</button><button class="btn" data-a="import">Import</button><input type="file" id="file" accept=".json" hidden></div></div>
 <div class="wrap"><nav class="side" id="side" aria-label="Endeavours"></nav><main class="main" id="main"></main></div>
 <script>
 const K='process_v1';
@@ -81,7 +81,7 @@ const mk=(name,o)=>Object.assign({id:uid(),name,offering:{},tiers:{free:'',paid:
 function load(){try{D=JSON.parse(localStorage.getItem(K))}catch(e){}
  if(!D||!Array.isArray(D.e)||!D.e.length)D={e:[mk('MindRoar',{offering:{what:'Structured 10-session behaviour-change coaching program, built on an externalizing, behaviour-first approach.',who:'Unfulfilled careerists and professionals.',delivery:'Ten coaching sessions.'}})]}}
 const SK='process_summary_v1';
-const sum=()=>({v:1,at:new Date().toISOString(),e:D.e.map(e=>({id:e.id,name:e.name||'',free:e.tiers.free||'',paid:e.tiers.paid.map(t=>({name:t.name||'',price:t.price||''})),aware:e.funnel.aware||'',lead:e.funnel.lead||'',offer:e.funnel.offer||'',sale:e.funnel.sale||'',channels:e.funnel.channels||'',c8:e.funnel.c8||''}))});
+const sum=()=>({v:1,at:new Date().toISOString(),e:D.e.map(e=>({id:e.id,name:e.name||'',free:e.tiers.free||'',paid:e.tiers.paid.map(t=>({name:t.name||'',price:t.price||''})),overview:e.funnel.overview||'',aware:e.funnel.aware||'',lead:e.funnel.lead||'',offer:e.funnel.offer||'',sale:e.funnel.sale||'',channels:e.funnel.channels||'',c8:e.funnel.c8||''}))});
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(D));localStorage.setItem(SK,JSON.stringify(sum()))}catch(e){}};
 const cur=()=>D.e.find(x=>x.id===sel)||(sel=(D.e.find(x=>x.name===Q.get('n'))||D.e[0]).id,D.e.find(x=>x.id===sel));
 const noFree=E=>!(E.tiers.free||'').trim();
@@ -116,7 +116,7 @@ function funnel(E){
  <div class="ro${noFree(E)?' empty':''}">${noFree(E)?'No free entry point yet. Add one in the dossier.':esc(E.tiers.free)}</div>
  ${paid?`<div class="ro">${esc(paid)}</div>`:''}</section>
  <section class="card"><h2>Funnel</h2><p class="sub">What a person goes through, from first noticing you to becoming a paying customer.</p>
- ${ta(E,'funnel.aware','Awareness: where people first find you',2)}${ta(E,'funnel.lead','Lead: how they start the free thing or join your list',2)}${ta(E,'funnel.offer','Offer: how free moves to paid',2)}${ta(E,'funnel.sale','Sale and after: delivery, follow-up, referrals',2)}</section>
+ ${ta(E,'funnel.overview','Overview: the funnel in a sentence or two',2)}${ta(E,'funnel.aware','Awareness: where people first find you',2)}${ta(E,'funnel.lead','Lead: how they start the free thing or join your list',2)}${ta(E,'funnel.offer','Offer: how free moves to paid',2)}${ta(E,'funnel.sale','Sale and after: delivery, follow-up, referrals',2)}</section>
  <section class="card"><h2>Marketing campaign</h2><p class="sub">The channels, content and schedule, and what has actually worked.</p>
  ${ta(E,'funnel.channels','Channels and content',3)}${ta(E,'funnel.schedule','Schedule',2)}${ta(E,'funnel.results','Results and lessons',3)}
  <label>Communic8 campaign link<input type="text" data-p="funnel.c8" placeholder="https://" value="${esc(E.funnel.c8)}"></label>${/^https?:\/\//i.test(c8)?`<a class="link" href="${esc(c8)}" target="_blank" rel="noopener">Open campaign</a>`:''}</section>`;
@@ -141,7 +141,7 @@ function funnelTxt(E){
  const paid=E.tiers.paid.filter(t=>t.name||t.price).map(t=>t.name+(t.price?' ('+t.price+')':'')).join('\n');
  const F=p=>get(E,'funnel.'+p);
  return head('Top of the funnel')+(noFree(E)?'No free entry point yet.\n\n':line('Free entry point',E.tiers.free))+line('Paid levels',paid)
-  +head('Funnel')+line('Awareness',F('aware'))+line('Lead',F('lead'))+line('Offer',F('offer'))+line('Sale and after',F('sale'))
+  +head('Funnel')+line('Overview',F('overview'))+line('Awareness',F('aware'))+line('Lead',F('lead'))+line('Offer',F('offer'))+line('Sale and after',F('sale'))
   +head('Marketing campaign')+line('Channels and content',F('channels'))+line('Schedule',F('schedule'))+line('Results and lessons',F('results'))+line('Communic8 campaign',F('c8'));
 }
 function emailView(){
@@ -177,14 +177,29 @@ document.addEventListener('click',e=>{
  else if(a==='email'){emailView();return}
  save();render();
 });
+const msg=t=>{const m=document.getElementById('msg');if(m)m.textContent=t};
+function mergeMC(p){
+ let E=D.e.find(x=>x.name===p.name);if(!E){E=mk(p.name);D.e.push(E)}
+ const fill=(path,v)=>{v=(v==null?'':String(v)).trim();if(v&&!String(get(E,path)||'').trim())set(E,path,v)};
+ fill('offering.what',p.offering);fill('offering.who',p.target);
+ const sf=p.structure||{};fill('structure.type',sf.bs);fill('funnel.overview',sf.fn);
+ fill('files',(p.locations||[]).map(r=>[r.loc,r.link,r.what].filter(x=>x&&String(x).trim()).join(' - ')).filter(Boolean).join('\n'));
+ PH.forEach(([k])=>{const c=(p.workflow||{})[k];if(!c)return;
+  if(!Number(get(E,'phases.'+k+'.s'))&&Number(c.s))set(E,'phases.'+k+'.s',Number(c.s));
+  fill('phases.'+k+'.steps',(c.steps||[]).map(x=>x.t).join('\n'));
+  fill('phases.'+k+'.objs',(c.objs||[]).map(o=>{const a=(c.acts||[]).filter(x=>x.o===o.id).map(x=>'  ['+(x.d?'x':' ')+'] '+x.t).join('\n');return o.t+(a?'\n'+a:'')}).join('\n'))});
+}
+function importFile(txt){
+ const j=JSON.parse(txt);
+ if(Array.isArray(j.e)&&!j.v){if(!confirm('Replace everything here with this backup?'))return;D=j;msg('Backup restored.');return}
+ const list=j.from==='mission-control'?j.e:(Array.isArray(j)?j:j.items);
+ if(!Array.isArray(list))throw new Error('shape');
+ let n=0,u=0;list.forEach(p=>{if(p&&p.name){D.e.some(x=>x.name===p.name)?u++:n++;mergeMC(p)}});
+ msg(n+' added, '+u+' updated. Existing text was kept; only blank fields were filled.');
+}
 document.getElementById('file').addEventListener('change',e=>{
  const f=e.target.files[0];if(!f)return;const r=new FileReader();
- r.onload=()=>{try{const j=JSON.parse(r.result);
-  if(Array.isArray(j.e)){if(!confirm('Replace everything here with this file?'))return;D=j}
-  else{const a=Array.isArray(j)?j:(j.items||[]);let n=0;
-   a.forEach(p=>{if(p&&p.name&&!D.e.some(x=>x.name===p.name)){D.e.push(mk(p.name,{offering:{what:p.offering||'',who:p.target||''}}));n++}});
-   alert(n+' endeavour(s) imported.')}
-  sel=null;save();render()}catch(x){alert('That file could not be read. Choose a JSON export from The Process or Mission Control.')}};
+ r.onload=()=>{try{importFile(r.result);sel=null;save();render()}catch(x){msg('That file could not be read. Choose a backup from The Process or a summary or export from Mission Control.')}};
  r.readAsText(f);e.target.value='';
 });
 load();save();render();
