@@ -72,6 +72,7 @@ const SECS=[
  ['Decisions log','Date, decision, reason. Keep the reasoning so you can revisit it.',[['decisions','Log',4]]]
 ];
 const Q=new URLSearchParams(location.search);
+let delArm=null,delT=null;
 let D,sel=Q.get('e'),tab=Q.get('tab')==='funnel'?'funnel':'dossier';
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -167,7 +168,7 @@ document.addEventListener('click',e=>{
  if(a==='sel'){sel=b.dataset.id;tab='dossier'}
  else if(a==='tab')tab=b.dataset.id;
  else if(a==='add'){const n=mk('New endeavour');D.e.push(n);sel=n.id;tab='dossier'}
- else if(a==='del'){if(!confirm('Delete "'+(E.name||'Untitled')+'" and everything recorded for it?'))return;D.e=D.e.filter(x=>x.id!==E.id);if(!D.e.length)D.e.push(mk('New endeavour'));sel=D.e[0].id}
+ else if(a==='del'){if(delArm!==E.id){delArm=E.id;b.textContent='Tap again to delete "'+(E.name||'Untitled')+'" and everything in it';clearTimeout(delT);delT=setTimeout(()=>{delArm=null;if(b.isConnected)b.textContent='Delete this endeavour'},4000);return}delArm=null;D.e=D.e.filter(x=>x.id!==E.id);if(!D.e.length)D.e.push(mk('New endeavour'));sel=D.e[0].id}
  else if(a==='chip'){if(noFree(E))E.tiers.free=CH[b.dataset.i]+': '}
  else if(a==='addtier')E.tiers.paid.push({name:'',price:'',inc:''});
  else if(a==='deltier')E.tiers.paid.splice(b.dataset.i,1);
@@ -191,7 +192,7 @@ function mergeMC(p){
 }
 function importFile(txt){
  const j=JSON.parse(txt);
- if(Array.isArray(j.e)&&!j.v){if(!confirm('Replace everything here with this backup?'))return;D=j;msg('Backup restored.');return}
+ if(Array.isArray(j.e)&&!j.v){if(!confirm('Replace everything here with this backup?')){msg('Restore cancelled.');return}D=j;msg('Backup restored.');return}
  const list=j.from==='mission-control'?j.e:(Array.isArray(j)?j:j.items);
  if(!Array.isArray(list))throw new Error('shape');
  let n=0,u=0;list.forEach(p=>{if(p&&p.name){D.e.some(x=>x.name===p.name)?u++:n++;mergeMC(p)}});
